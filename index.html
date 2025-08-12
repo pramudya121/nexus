@@ -162,9 +162,9 @@
         let currentAccount = null;
 
         // Contract addresses - Replace with actual NEXUS testnet contract addresses
-        const TOKEN_ADDRESS = "0x123..."; // Replace with actual NEX token address
-        const STAKING_ADDRESS = "0x456..."; // Replace with actual staking contract address
-        const RPC_URL = "https://testnet.nexus.network"; // Replace with actual RPC URL
+        const TOKEN_ADDRESS = "0x26ED321dff0E59d10544253E0Cdb56FE6aa8BA12"; // Replace with actual NEX token address
+        const STAKING_ADDRESS = "0xEB9e6480e8867Aeb661a434b0281032a71183daa"; // Replace with actual staking contract address
+        const RPC_URL = "https://testnet3.rpc.nexus.xyz"; // Replace with actual RPC URL
 
         // ABI partial - Replace with actual ABIs
         const TOKEN_ABI = [
@@ -173,11 +173,140 @@
         ];
         
         const STAKING_ABI = [
-            "function stake(uint256 amount) public",
-            "function unstake(uint256 amount) public",
-            "function stakedAmount(address) public view returns (uint256)"
-        ];
-
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "spender",
+				"type": "address"
+			}
+		],
+		"name": "allowance",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "spender",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "approve",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			}
+		],
+		"name": "balanceOf",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "totalSupply",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "transfer",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "from",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "transferFrom",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	}
+];
         // Initialize when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
             createSakura();
@@ -295,11 +424,7 @@
         // Get network name from chain ID
         function getNetworkName(chainId) {
             switch(chainId) {
-                case "0x1": return "Ethereum Mainnet";
-                case "0x5": return "Goerli Testnet";
-                case "0xaa36a7": return "Sepolia Testnet";
                 case "3940":return "NEXUSCHAIN"
-                // Add Monad Testnet chain ID when known
                 default: return chainId;
             }
         }
