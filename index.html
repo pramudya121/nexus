@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS NEX Staking</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #1a1a1a;
+            color: #f0f0f0;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        .sakura {
+            position: absolute;
+            top: -10vh;
+            z-index: -1;
+            animation: fall linear infinite;
+            opacity: 0.7;
+        }
+
+        @keyframes fall {
+            to {
+                transform: translateY(100vh);
+            }
+        }
+
+        .samurai-bg {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            height: 70vh;
+            opacity: 0.3;
+            z-index: -1;
+        }
+
+        .card {
+            background: rgba(20, 20, 20, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 0, 0, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #d70000, #a50000);
+            border: none;
+            transition: all 0.3s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(215, 0, 0, 0.4);
+        }
+
+        .btn-outline {
+            border: 1px solid #d70000;
+            color: #d70000;
+            transition: all 0.3s;
+        }
+
+        .btn-outline:hover {
+            background: rgba(215, 0, 0, 0.1);
+        }
+
+        input {
+            background: rgba(30, 30, 30, 0.8);
+            border: 1px solid #333;
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #d70000;
+            box-shadow: 0 0 0 3px rgba(215, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <!-- Sakura flowers animation -->
+    <div id="sakura-container"></div>
+
+    <!-- Samurai background image -->
+    <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/3b4b7627-697d-4a88-bd1c-2c0c7aa6610b.png" alt="Japanese landscape with cherry blossom trees and traditional architecture" class="samurai-bg" />
+
+    <!-- Main container -->
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="p-6 flex justify-between items-center">
+            <h1 class="text-3xl font-bold text-red-600">PRAMX Staking</h1>
+            <button id="connect-wallet" class="btn-primary px-6 py-2 rounded-lg font-medium">
+                Connect Wallet
+            </button>
+        </header>
+
+        <!-- Main content -->
+        <main class="flex-grow flex items-center justify-center p-4">
+            <div class="card w-full max-w-md p-6 rounded-xl shadow-lg">
+                <div class="text-center mb-6">
+                    <h2 class="text-2xl font-bold mb-2">Stake NEX Tokens</h2>
+                    <p class="text-gray-400">Earn rewards by staking your NEX tokens</p>
+                </div>
+
+                <div class="mb-6">
+                    <div class="flex justify-between mb-2">
+                        <span>Wallet Balance:</span>
+                        <span id="wallet-balance">0 NEX</span>
+                    </div>
+                    <div class="flex justify-between mb-4">
+                        <span>Staked Amount:</span>
+                        <span id="staked-amount">0 NEX</span>
+                    </div>
+                    <div class="flex justify-between mb-4">
+                        <span>Network:</span>
+                        <span id="network">Not connected</span>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <div class="flex justify-between mb-2">
+                        <label for="stake-amount">Amount to Stake</label>
+                        <button class="text-sm btn-outline px-2 py-1 rounded" onclick="setMaxStake()">Max</button>
+                    </div>
+                    <input type="number" id="stake-amount" placeholder="0.0" class="w-full p-3 rounded-lg mb-4 text-white">
+
+                    <button id="stake-btn" class="btn-primary w-full py-3 rounded-lg mb-4 font-medium">
+                        Stake
+                    </button>
+                </div>
+
+                <div>
+                    <div class="flex justify-between mb-2">
+                        <label for="unstake-amount">Amount to Unstake</label>
+                        <button class="text-sm btn-outline px-2 py-1 rounded" onclick="setMaxUnstake()">Max</button>
+                    </div>
+                    <input type="number" id="unstake-amount" placeholder="0.0" class="w-full p-3 rounded-lg mb-4 text-white">
+
+                    <button id="unstake-btn" class="btn-outline w-full py-3 rounded-lg font-medium">
+                        Unstake
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="p-4 text-center text-gray-500 text-sm">
+            <p>NEXUS Network Staking - Testnet Only - Use at your own risk</p>
+        </footer>
+    </div>
+
+    <script>
+        // Global variables
+        let provider;
+        let signer;
+        let stakingContract;
+        let tokenContract;
+        let currentAccount = null;
+
+        // Contract addresses - Replace with actual NEXUS testnet contract addresses
+        const TOKEN_ADDRESS = "0x123..."; // Replace with actual NEX token address
+        const STAKING_ADDRESS = "0x456..."; // Replace with actual staking contract address
+        const RPC_URL = "https://testnet.nexus.network"; // Replace with actual RPC URL
+
+        // ABI partial - Replace with actual ABIs
+        const TOKEN_ABI = [
+            "function balanceOf(address) view returns (uint256)",
+            "function approve(address, uint256) returns (bool)"
+        ];
+        
+        const STAKING_ABI = [
+            "function stake(uint256 amount) public",
+            "function unstake(uint256 amount) public",
+            "function stakedAmount(address) public view returns (uint256)"
+        ];
+
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            createSakura();
+            initWalletConnection();
+            initContracts();
+        });
+
+        // Create sakura flowers animation
+        function createSakura() {
+            const container = document.getElementById('sakura-container');
+            for (let i = 0; i < 20; i++) {
+                const sakura = document.createElement('div');
+                sakura.classList.add('sakura');
+                
+                // Random properties
+                const left = Math.random() * 100;
+                const animationDuration = 10 + Math.random() * 20;
+                const delay = Math.random() * 15;
+                const size = 5 + Math.random() * 10;
+                const opacity = 0.3 + Math.random() * 0.7;
+                
+                sakura.style.left = `${left}%`;
+                sakura.style.animationDuration = `${animationDuration}s`;
+                sakura.style.animationDelay = `${delay}s`;
+                sakura.style.width = `${size}px`;
+                sakura.style.height = `${size}px`;
+                sakura.style.opacity = opacity;
+                sakura.innerHTML = '❀';
+                
+                container.appendChild(sakura);
+            }
+        }
+
+        // Initialize wallet connection
+        function initWalletConnection() {
+            const connectBtn = document.getElementById('connect-wallet');
+            connectBtn.addEventListener('click', toggleWalletConnection);
+            
+            // Check if wallet is already connected
+            if (window.ethereum) {
+                window.ethereum.on('accountsChanged', handleAccountsChanged);
+                window.ethereum.on('chainChanged', handleChainChanged);
+                
+                if (window.ethereum.selectedAddress) {
+                    handleAccountsChanged([window.ethereum.selectedAddress]);
+                }
+            }
+        }
+
+        // Initialize contract instances
+        function initContracts() {
+            if (window.ethereum) {
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                signer = provider.getSigner();
+                
+                tokenContract = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, signer);
+                stakingContract = new ethers.Contract(STAKING_ADDRESS, STAKING_ABI, signer);
+            }
+        }
+
+        // Toggle wallet connection
+        async function toggleWalletConnection() {
+            if (!window.ethereum) {
+                alert("Please install MetaMask or OKX Wallet!");
+                return;
+            }
+
+            try {
+                if (currentAccount) {
+                    // Disconnect
+                    currentAccount = null;
+                    updateUI();
+                    document.getElementById('connect-wallet').textContent = 'Connect Wallet';
+                } else {
+                    // Connect
+                    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    currentAccount = accounts[0];
+                    updateUI();
+                    document.getElementById('connect-wallet').textContent = `${currentAccount.substring(0, 6)}...${currentAccount.substring(38)}`;
+                    
+                    // Check network
+                    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                    handleChainChanged(chainId);
+                }
+            } catch (error) {
+                console.error("Error connecting wallet:", error);
+                alert("Error connecting wallet: " + error.message);
+            }
+        }
+
+        // Handle account changes
+        function handleAccountsChanged(accounts) {
+            if (accounts.length === 0) {
+                currentAccount = null;
+                document.getElementById('connect-wallet').textContent = 'Connect Wallet';
+            } else {
+                currentAccount = accounts[0];
+                document.getElementById('connect-wallet').textContent = `${currentAccount.substring(0, 6)}...${currentAccount.substring(38)}`;
+            }
+            updateUI();
+        }
+
+        // Handle chain changes
+        function handleChainChanged(chainId) {
+            const networkName = getNetworkName(chainId);
+            document.getElementById('network').textContent = networkName;
+            
+            if (networkName === "NEXUS Testnet") {
+                updateUI();
+            } else {
+                alert("Please switch to nexuschain");
+            }
+        }
+
+        // Get network name from chain ID
+        function getNetworkName(chainId) {
+            switch(chainId) {
+                case "0x1": return "Ethereum Mainnet";
+                case "0x5": return "Goerli Testnet";
+                case "0xaa36a7": return "Sepolia Testnet";
+                case "3940":return "NEXUSCHAIN"
+                // Add Monad Testnet chain ID when known
+                default: return chainId;
+            }
+        }
+
+        // Update UI with current balances
+        async function updateUI() {
+            if (!currentAccount) {
+                document.getElementById('wallet-balance').textContent = "0 NEXUS";
+                document.getElementById('staked-amount').textContent = "0 NEXUS";
+                return;
+            }
+
+            try {
+                // Get wallet balance
+                const balance = await tokenContract.balanceOf(currentAccount);
+                const formattedBalance = ethers.utils.formatUnits(balance, 18);
+                document.getElementById('wallet-balance').textContent = `${parseFloat(formattedBalance).toFixed(4)} NEX`;
+
+                // Get staked amount
+                const staked = await stakingContract.stakedAmount(currentAccount);
+                const formattedStaked = ethers.utils.formatUnits(staked, 18);
+                document.getElementById('staked-amount').textContent = `${parseFloat(formattedStaked).toFixed(4)} NEX`;
+            } catch (error) {
+                console.error("Error updating UI:", error);
+            }
+        }
+
+        // Stake tokens
+        async function stakeTokens() {
+            const amountInput = document.getElementById('stake-amount').value;
+            if (!amountInput || isNaN(amountInput) || parseFloat(amountInput) <= 0) {
+                alert("Please enter a valid amount");
+                return;
+            }
+
+            if (!currentAccount) {
+                alert("Please connect your wallet first");
+                return;
+            }
+
+            try {
+                const amount = ethers.utils.parseUnits(amountInput, 18);
+                
+                // Approve staking contract to spend tokens
+                const approveTx = await tokenContract.approve(STAKING_ADDRESS, amount);
+                await approveTx.wait();
+                
+                // Stake tokens
+                const stakeTx = await stakingContract.stake(amount);
+                await stakeTx.wait();
+                
+                alert("Staking successful!");
+                updateUI();
+            } catch (error) {
+                console.error("Staking error:", error);
+                alert("Staking failed: " + error.message);
+            }
+        }
+
+        // Unstake tokens
+        async function unstakeTokens() {
+            const amountInput = document.getElementById('unstake-amount').value;
+            if (!amountInput || isNaN(amountInput) || parseFloat(amountInput) <= 0) {
+                alert("Please enter a valid amount");
+                return;
+            }
+
+            if (!currentAccount) {
+                alert("Please connect your wallet first");
+                return;
+            }
+
+            try {
+                const amount = ethers.utils.parseUnits(amountInput, 18);
+                
+                // Unstake tokens
+                const unstakeTx = await stakingContract.unstake(amount);
+                await unstakeTx.wait();
+                
+                alert("Unstaking successful!");
+                updateUI();
+            } catch (error) {
+                console.error("Unstaking error:", error);
+                alert("Unstaking failed: " + error.message);
+            }
+        }
+
+        // Set max stake amount
+        async function setMaxStake() {
+            if (!currentAccount) {
+                alert("Please connect your wallet first");
+                return;
+            }
+
+            try {
+                const balance = await tokenContract.balanceOf(currentAccount);
+                const formattedBalance = ethers.utils.formatUnits(balance, 18);
+                document.getElementById('stake-amount').value = parseFloat(formattedBalance).toFixed(4);
+            } catch (error) {
+                console.error("Error getting balance:", error);
+            }
+        }
+
+        // Set max unstake amount
+        async function setMaxUnstake() {
+            if (!currentAccount) {
+                alert("Please connect your wallet first");
+                return;
+            }
+
+            try {
+                const staked = await stakingContract.stakedAmount(currentAccount);
+                const formattedStaked = ethers.utils.formatUnits(staked, 18);
+                document.getElementById('unstake-amount').value = parseFloat(formattedStaked).toFixed(4);
+            } catch (error) {
+                console.error("Error getting staked amount:", error);
+            }
+        }
+
+        // Add event listeners for buttons
+        document.getElementById('stake-btn').addEventListener('click', stakeTokens);
+        document.getElementById('unstake-btn').addEventListener('click', unstakeTokens);
+    </script>
+</body>
+</html>
